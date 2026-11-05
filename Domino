@@ -1,1 +1,45 @@
+Scope:
 
+The NexusCorp Employee Portal appears to be a typical internal application with authentication
+controls and role-based access in place. However, multiple small weaknesses, ranging from
+misconfigurations to logic flaws, can be combined to fully compromise the system.
+As an attacker, your objective is to observe how the application behaves, interact with its
+endpoints, and identify weak trust boundaries. By analysing requests, modifying parameters,
+and chaining vulnerabilities together, you can progressively escalate your access and move
+deeper into the system.
+
+A single misstep can trigger a chain reaction, exploit each weakness in sequence and
+watch the system fall, one domino at a time.
+
+Goals:
+
+- What is the flag found in the admin user's profile notes?
+
+- What is the flag displayed on the admin panel after gaining admin access?
+
+- What is the flag obtained after achieving remote code execution on the server?
+
+- Flag is stored in /opt/flag3.txt
+
+- What is the flag found in the devops user's home directory?
+
+- What is the root flag?
+
+Step 1:
+
+We are brought to a login screen with some basic information. The username has a format of
+firstname.lastname, password and a few tabs. The most interesting one being the “out team”
+tab. When selecting this tab I am able to view a few employees at this company as well as their
+first and last name, role, and email. I take the user names and put them into a text file called
+users.txt
+
+laura.hayes
+michael.chen
+sarah.johnson
+robert.wilson
+emma.taylor
+david.brown
+james.wright
+
+I run a rustscan command to scope out the website as well as additional hidden files
+rustscan -a 10.129.85.22
