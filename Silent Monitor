@@ -128,4 +128,12 @@ ssh sysadmin@10.129.141.87
 THM{sQli_4nd_cMd_1nj3ct10n_l3D_y0u_h3re!}
 First flag found!
 
+Now that I have a ssh as sysadmin it's time to pry around and see what kind of access I have and what services I have access to 
+Check sudo 
+Check id 
+Check SUI + Capabilities 
+Check scheduled tasks 
+Look for any backup scripts laying around 
+
+I go to check this file /home/sysadmin/backups/ where I find a read me file and a infrastructure.kdbx file 
 
