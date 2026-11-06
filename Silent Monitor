@@ -118,6 +118,14 @@ drwxr-xr-x 3 root     root      4096 May 19 03:10 ..
 -rw-r----- 1 root     www-data   446 May 19 03:10 secret.config
 drwxr-x--- 2 root     www-data  4096 May 19 03:10 templates
 
+The secret.config file just handed me the privesc. 
+[backup_agent]
+run_as   = sysadmin
+password = S3cur3Backup$Acc3ss!
 
+
+ssh sysadmin@10.129.141.87
+THM{sQli_4nd_cMd_1nj3ct10n_l3D_y0u_h3re!}
+First flag found!
 
 
