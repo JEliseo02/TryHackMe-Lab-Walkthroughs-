@@ -39,4 +39,26 @@ Objectives
 - What is the flag on the Domain Controller?
 
 Start: 
+WEBSEVER - 192.168.11.200
+DEADDROP-DC - 196.168.11.100
+DEADDROP-WRK - 196.168.11.51
+
 To begin this lab I use a nmap scan and a gobuter scan against the target IP so see open ports and files. 
+Return values: 
+
+22/tcp open  ssh     OpenSSH 9.6p1 Ubuntu 3ubuntu13.5 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    Node.js Express framework
+
+/login                (Status: 200) [Size: 2068]
+/Login                (Status: 200) [Size: 2068]
+/logout               (Status: 302) [Size: 28] [--> /login]
+/dashboard            (Status: 302) [Size: 28] 
+
+We get a few intersting hits from the gobuster enumeration. After going to the /dashboard page I am proud to the Dead Drop login page 
+At this page there is a username and a password field. After entering 
+admin' OR 1=1 -- -> username 
+"anything" -> password 
+
+I was able to login makign the username and password fields weak to SQL injections. I am now logged in as admin 
+On this page there is an option to submit a file. I was able to submit a blank file called test.txt. 
+There were already pre loaded files such as test2.txt and script.ts 
