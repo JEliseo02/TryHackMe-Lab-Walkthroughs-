@@ -1,1 +1,42 @@
+Scope: 
 
+You have been engaged as a penetration tester for a security audit of DeadDrop Ltd, a document management company that provides file-sharing services to corporate clients. 
+The company recently expanded its infrastructure and wants assurance that its systems are secure before onboarding a major new client.
+
+Your point of entry is a web-facing file-sharing application. Behind it sits an internal corporate network that you have no direct access to. 
+Your objective is clear: compromise the domain controller and retrieve the flag from the Administrator's desktop. How you get there is up to you.
+
+Scope and Rules of Engagement
+The engagement covers the following systems:
+
+Machine	Role	Access
+DeadDrop-WEB	DMZ web server	Directly accessible via your VPN connection
+Internal network	Corporate LAN (192.168.11.0/24)	Not directly accessible, must be reached through the DMZ
+The internal network contains a Windows workstation and a domain controller, but you will need to discover their exact addresses yourself.
+
+In scope:
+
+All services running on the lab machines
+Any credentials or hashes you discover along the way
+Pivoting from the DMZ into the internal network
+Active Directory enumeration and ACL-based attacks
+Out of scope:
+
+Denial of service attacks
+Social engineering of DeadDrop Ltd employees
+Modifying or deleting data on production systems
+
+Objectives
+
+- What password grants you SSH access to the web server?
+
+- What credentials does the company's internal mobile application contain? (Format: username:password)
+
+- What Active Directory permission does your domain account hold that can be abused for privilege escalation?
+
+- What is the name of the group you target to escalate to Domain Admin?
+
+- What is the flag on the Domain Controller?
+
+Start: 
+To begin this lab I use a nmap scan and a gobuter scan against the target IP so see open ports and files. 
