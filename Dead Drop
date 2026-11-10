@@ -169,4 +169,20 @@ Perfect we have a apk file that I can download to the attack box and open
 Grabbing the file via ssh 
 scp svc-drop@192.168.11.200:~/deaddrop-mobile.apk .
 
+Now time to sort through the mess 
+jadx -d deaddrop-jadx deaddrop-mobile.apk 2>/dev/null
+Results after filtering: 
+
+Config.java:   DEFAULT_PASSWORD = "DropsOfJupiter2026!"
+strings.xml:   default_username = "j.harris"
+strings.xml:   default_password = "DropsOfJupiter2026!"
+j.harris:DropsOfJupiter2026!
+Credentials for app found!
+
+api_endpoint = http://internal.tryhackme.loc/api/v1 → the domain is tryhackme.loc, 
+and there’s an internal service at internal.tryhackme.loc (likely on the DC, 192.168.11.100).
+status_connecting = "Connecting to internal API…" → confirms this app authenticates j.harris against an internal service, 
+which means j.harris is almost certainly an Active Directory domain account
+
+
 
