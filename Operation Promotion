@@ -1,1 +1,26 @@
+Scope: 
+You are up for promotion at Hadron Security. Your senior lead, Mara, has handed you a solo engagement against RecruitCorp,
+a small recruiting firm with a public-facing portal. 
+Compromise the host, capture the flags, and demonstrate that you are ready for the Penetration Tester title.
+
+What is the content of user.txt?
+What is the content of flag.txt?
+
+Start: 
+To begin this engagement I am going to run a nmap scan against the service to see the open ports and current services
+
+nmap -sC -sV -p- 10.129.147.83 -oN nmap-full.txt
+Results: 
+PORT    STATE SERVICE     VERSION
+22/tcp  open  ssh         OpenSSH 9.6p1 Ubuntu 3ubuntu13.16 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   256 03:af:29:86:36:80:06:53:9a:d4:08:9b:20:53:2d:02 (ECDSA)
+|_  256 a4:b7:bd:e0:21:94:9b:44:9e:53:1a:f6:ca:ee:89:67 (ED25519)
+80/tcp  open  http        Apache httpd 2.4.58 ((Ubuntu))
+|_http-title: RecruitCorp - Careers Portal
+|_http-server-header: Apache/2.4.58 (Ubuntu)
+| http-robots.txt: 1 disallowed entry 
+|_/admin/
+139/tcp open  netbios-ssn Samba smbd 4.6.2
+445/tcp open  netbios-ssn Samba smbd 4.6.2
 
