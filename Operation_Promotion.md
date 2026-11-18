@@ -89,3 +89,4 @@ The admin dashboard exposed a **User Lookup** (`/admin/users/lookup.php?id=`) an
 > `sysmaint` — "Service account for /admin/sysmaint-checks/ping.php. Do not disable."
  
 **Remediation.** Use parameterised queries; enforce strong admin credentials and MFA; do not expose internal service-account notes in the UI.
+
