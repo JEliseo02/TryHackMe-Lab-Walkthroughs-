@@ -1,0 +1,13 @@
+Scope:
+Volt Labs, a small SaaS shop, suspects an old staging server has rotted into an exposed liability. 
+Mara has assigned you the engagement. Find your way in and demonstrate full compromise.
+
+Answer the questions below
+What is the content of user.txt?
+
+What is the content of flag.txt?
+
+Please note that my IP address for the attack box and victim machine will switch as the lab progresses. Each switch will represent a new session.
+
+Start: 
+
