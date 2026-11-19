@@ -11,3 +11,52 @@ Please note that my IP address for the attack box and victim machine will switch
 
 Start: 
 
+nmap -sC -sC -p- <target> -oN nmap.txt
+
+Result: 
+
+Host is up (0.00040s latency).
+Not shown: 65532 closed tcp ports (reset)
+PORT   STATE SERVICE VERSION
+21/tcp open  ftp     vsftpd 3.0.5
+| ftp-anon: Anonymous FTP login allowed (FTP code 230)
+|_drwxr-xr-x    2 ftp      ftp          4096 May 09  2026 pub
+| ftp-syst: 
+|   STAT: 
+| FTP server status:
+|      Connected to 10.129.114.73
+|      Logged in as ftp
+|      TYPE: ASCII
+|      No session bandwidth limit
+|      Session timeout in seconds is 300
+|      Control connection is plain text
+|      Data connections will be plain text
+|      At session startup, client count was 4
+|      vsFTPd 3.0.5 - secure, fast, stable
+|_End of status
+22/tcp open  ssh     OpenSSH 9.6p1 Ubuntu 3ubuntu13.16 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   256 51:5d:80:84:c2:fc:e9:93:b7:73:36:53:31:48:de:7b (ECDSA)
+|_  256 3f:54:1a:5f:ca:b2:4a:cf:c4:de:ee:19:0c:e0:e1:a1 (ED25519)
+80/tcp open  http    gunicorn
+|_http-server-header: gunicorn
+|_http-title: URL Preview - Volt Labs
+| fingerprint-strings: 
+|   FourOhFourRequest: 
+|     HTTP/1.0 404 NOT FOUND
+|     Server: gunicorn
+|     Date: Wed, 18 Nov 2026 21:28:14 GMT
+|     Connection: close
+|     Content-Type: text/html; charset=utf-8
+|     Content-Length: 207
+|     <!doctype html>
+|     <html lang=en>
+|     <title>404 Not Found</title>
+|     <h1>Not Found</h1>
+|     <p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.</p>
+
+
+gobuster dir -u http://10.129.151.94 -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x php,html,js,txt,zip.bak
+
+Result: 
+
