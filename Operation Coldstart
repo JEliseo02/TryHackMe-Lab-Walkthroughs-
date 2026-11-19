@@ -60,3 +60,39 @@ gobuster dir -u http://10.129.151.94 -w /usr/share/wordlists/dirbuster/directory
 
 Result: 
 
+/admin                (Status: 308) [Size: 241] [--> http://10.129.151.94/admin/]
+/preview              (Status: 400) [Size: 2493]
+
+Going to each of these links gives me a good insight 
+/preview -> "Provide a ?url= parameter."
+/admin -> "Forbidden You don't have the permission to access the requested resource. It is either read-protected or not readable by the server."
+
+Time to do a curl request to the main page, on this page we are prompted to enter a url pathway 
+The actual page reads, "Internal tool. Paste a URL below to preview its contents." most likely a code injection pathway 
+
+curl -s http://10.129.151.94/
+
+Result: 
+
+</head>
+<body>
+<nav class="navbar">
+    <span class="brand">Volt Labs</span>
+    <span class="muted-light">URL Preview Service &middot; staging</span>
+</nav>
+<main class="container">
+    <div class="card">
+        <h1>URL Preview Service</h1>
+        <p class="muted">Internal tool. Paste a URL below to preview its contents.</p>
+        <form method="get" action="/preview">
+            <div class="form-group">
+                <label for="url">URL</label>
+                <input id="url" type="text" name="url" class="form-control" placeholder="https://example.com/" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Preview</button>
+        </form>
+    </div>
+    </main>
+<footer class="site">&copy; Volt Labs &middot; do not expose externally</footer>
+</body>
+</html
