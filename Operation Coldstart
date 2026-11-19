@@ -55,7 +55,6 @@ PORT   STATE SERVICE VERSION
 |     <h1>Not Found</h1>
 |     <p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.</p>
 
-
 gobuster dir -u http://10.129.151.94 -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x php,html,js,txt,zip.bak
 
 Result: 
@@ -96,3 +95,9 @@ Result:
 <footer class="site">&copy; Volt Labs &middot; do not expose externally</footer>
 </body>
 </html
+
+Now in the url field we are asked to enter a URl I went ahead and tested https://google.com to see what would happen.
+By doing this I was able to see how the url encoded the message as well as an error message 
+http://10.129.151.94/preview?url=https%3A%2F%2Fgoogle.com
+Host not in the approved internal allow-list.
+Interesting, I now know how the encoding works and how there is an internal allow-list.
