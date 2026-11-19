@@ -101,3 +101,101 @@ By doing this I was able to see how the url encoded the message as well as an er
 http://10.129.151.94/preview?url=https%3A%2F%2Fgoogle.com
 Host not in the approved internal allow-list.
 Interesting, I now know how the encoding works and how there is an internal allow-list.
+
+Another interesting lead is the ftp port is open with allowed anonymous sign in so let's dive in to ftp to see if there is anything lingering 
+ftp 10.128.139.29
+After validating the credentials 
+username: anonymous
+password: (blank)
+I was able to get in a see a directory called pub 
+In this directory is a file called  backup.tar.gz
+Let's extract this and see if we can find any credentials or url pathways 
+
+mkdir backup && tar -xzvf backup.tar.gz -C backup
+Results: 
+voltlabs-preview/
+voltlabs-preview/requirements.txt
+voltlabs-preview/README.md
+voltlabs-preview/app.py
+
+In this dump there is a very important file found, app.py. The other files seem just to be noise 
+
+def page(title, body):
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title} - Volt Labs</title>{CSS}</head>
+<body>
+<nav class="navbar">
+    <span class="brand">Volt Labs</span>
+    <span class="muted-light">URL Preview Service &middot; staging</span>
+</nav>
+<main class="container">{body}</main>
+<footer class="site">&copy; Volt Labs &middot; do not expose externally</footer>
+</body>
+</html>"""
+
+@app.route("/")
+def index():
+    body = """
+    <div class="card">
+        <h1>URL Preview Service</h1>
+        <p class="muted">Internal tool. Paste a URL below to preview its contents.</p>
+        <form method="get" action="/preview">
+            <div class="form-group">
+                <label for="url">URL</label>
+                <input id="url" type="text" name="url" class="form-control" placeholder="https://example.com/" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Preview</button>
+        </form>
+    </div>
+    """
+    return page("URL Preview", body)
+
+@app.route("/preview")
+def preview():
+    target = request.args.get("url", "")
+    if not target:
+        return page("Preview Error",
+                    '<div class="card"><p>Provide a <code>?url=</code> parameter.</p></div>'), 400
+
+    # VULN: hostname allow-list is the only check. No scheme check, no path check,
+    # no localhost-rebind protection - the SSRF is still abusable, but only
+    # against the allowed hostname.
+    host = (urlparse(target).hostname or "").lower()
+    if host not in ALLOWED_HOSTS:
+        return page("Preview Blocked",
+                    '<div class="card"><p>Host not in the approved internal allow-list.</p></div>'), 403
+
+    try:
+        r = requests.get(target, timeout=3)
+        safe_target = html.escape(target)
+        safe_body = r.text.replace("<", "&lt;")
+        body = f"""
+        <div class="card">
+            <h2>Preview of {safe_target}</h2>
+            <pre>{safe_body}</pre>
+        </div>
+        """
+        return page("Preview", body)
+    except Exception as e:
+        safe_err = html.escape(str(e))
+        return page("Preview Failed",
+                    f'<div class="card"><p>Fetch failed: {safe_err}</p></div>'), 502
+
+@app.route("/admin/")
+@app.route("/admin/<path:p>")
+def admin(p="index"):
+    if not request.remote_addr.startswith("127."):
+        abort(403)
+    if p == "notes":
+        with open("/opt/voltlabs-preview/admin_notes.txt") as f:
+            return "<pre>" + f.read() + "</pre>"
+    return "<pre>Volt Labs admin endpoint.</pre>"
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=80)
+
+
