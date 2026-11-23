@@ -136,3 +136,23 @@ Results:
 
 host: 10.130.176.34   login: quinn   password: cookie
 host: 10.130.176.34   login: eddie   password: softball
+
+Time to login as each user and find our flag 
+
+Eddie's account is a dead end. Quinn holds our flag ftp_flag.txt
+Time to extract and read 
+get ftp_flag.txt
+cat ftp_flag.txt
+
+Result: 
+
+THM{QUINN_IS_BACK007}
+hidden ftp profile flag found!
+
+After navigating to the link we are prompted with this 
+Your mission is to use Nmap to scan 10.130.176.34 (this machine)
+as covertly as possible and avoid being detected by the IDS
+The website is unique as it has a percentage on the packets and how likely the scan would be detected by an IDS 
+running nmap in mode -sS -T2 was too loud so now I'm running an even quieter scan 
+
+sudo nmap -sS -T1 10.130.176.34
