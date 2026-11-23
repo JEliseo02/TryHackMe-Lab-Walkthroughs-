@@ -156,3 +156,7 @@ The website is unique as it has a percentage on the packets and how likely the s
 running nmap in mode -sS -T2 was too loud so now I'm running an even quieter scan 
 
 sudo nmap -sS -T1 10.130.176.34
+Also failed let's try using the -sN flag which sends packets with null flags 
+nmap -sN 10.130.176.34
+THM{NMAP_CHAMPION001} 
+Stealth nmap flag found!
